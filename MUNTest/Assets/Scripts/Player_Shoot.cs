@@ -5,7 +5,7 @@ using System.Collections;
 /// Makes player shoot bubbles
 /// </summary>
 /// 
-public class Player_Shoot : MonoBehaviour {
+public class Player_Shoot : MonobitEngine.MonoBehaviour {
 
 	// MonobitView コンポーネント
 	MonobitEngine.MonobitView m_MonobitView = null;
@@ -19,6 +19,18 @@ public class Player_Shoot : MonoBehaviour {
 	float m_Timer = 0;
 	
 	Animator m_Animator;
+
+	[MunRPC]
+	void SpawnBazookaBullet()
+	{
+		GameObject newBullet = Instantiate(Bullet, BulletSpawnPoint.position, Quaternion.Euler(0, 0, 0)) as GameObject;
+		Destroy(newBullet, m_BulletDuration);
+		newBullet.GetComponent<Rigidbody>().velocity = -BulletSpawnPoint.forward * m_BulletSpeed;
+		newBullet.GetComponent<DamageProvider>().SetScaleBullet();
+		newBullet.SetActive(true);
+
+		if (BulletParent) newBullet.transform.parent = BulletParent;
+	}
 
 	void Awake()
 	{
@@ -60,13 +72,7 @@ public class Player_Shoot : MonoBehaviour {
 		{			
 			if(m_Timer > 0.1f) // firing rate
 			{
-				GameObject newBullet = Instantiate(Bullet, BulletSpawnPoint.position , Quaternion.Euler(0, 0, 0)) as GameObject;		  										
-				Destroy(newBullet, m_BulletDuration);										
-				newBullet.GetComponent<Rigidbody>().velocity = -BulletSpawnPoint.forward* m_BulletSpeed;						
-				newBullet.GetComponent<DamageProvider>().SetScaleBullet(); 
-				newBullet.SetActive(true);
-			
-				if(BulletParent) newBullet.transform.parent = BulletParent;
+				m_MonobitView.RPC("SpawnBazookaBullet", MonobitEngine.MonobitTargets.All, null);
 				
 				m_Timer = 0;
 			}

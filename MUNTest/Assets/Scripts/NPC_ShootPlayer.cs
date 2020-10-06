@@ -4,8 +4,11 @@ using System.Collections;
 /// <summary>
 /// Makes NPC shoot at player
 /// </summary>
-public class NPC_ShootPlayer : MonoBehaviour {
-	
+public class NPC_ShootPlayer : MonobitEngine.MonoBehaviour {
+
+	// MonobitView コンポーネント
+	MonobitEngine.MonobitView m_MonobitView = null;
+
 	const float m_AttackDistance = 5;
 	const float m_BulletSpeed = 15.0f;
 	const float m_BulletDuration = 10.0f;
@@ -16,24 +19,55 @@ public class NPC_ShootPlayer : MonoBehaviour {
 	
 	public Transform BulletParent;
 	
-	Animator  	m_Animator = null;	
-	GameObject 	m_Player = null;	 	
-	Animator 	m_PlayerAnimator = null;	
+	Animator  	m_Animator = null;
+	GameObject[] m_Player = null;
+	Animator[] m_PlayerAnimator = null;
+	int selectedPlayer = 0;
+	Vector3 selectedPos = Vector3.zero;
 	bool 		m_HasShootInCycle;
 	float 		m_PrevStateTime;
 	Vector3		m_LookAtPosition = new Vector3();
-	
-	void Start () 
+
+	void Awake()
+	{
+		// すべての親オブジェクトに対して MonobitView コンポーネントを検索する
+		if (GetComponentInParent<MonobitEngine.MonobitView>() != null)
+		{
+			m_MonobitView = GetComponentInParent<MonobitEngine.MonobitView>();
+		}
+		// 親オブジェクトに存在しない場合、すべての子オブジェクトに対して MonobitView コンポーネントを検索する
+		else if (GetComponentInChildren<MonobitEngine.MonobitView>() != null)
+		{
+			m_MonobitView = GetComponentInChildren<MonobitEngine.MonobitView>();
+		}
+		// 親子オブジェクトに存在しない場合、自身のオブジェクトに対して MonobitView コンポーネントを検索して設定する
+		else
+		{
+			m_MonobitView = GetComponent<MonobitEngine.MonobitView>();
+		}
+	}
+
+	void Start()
 	{
 		m_Animator = GetComponent<Animator>();
 		m_Animator.logWarnings = false; // so we dont get warning when updating controller in live link ( undocumented/unsupported function!)
-		m_Player = GameObject.FindWithTag ("Player");	
-		m_PlayerAnimator = m_Player.GetComponent<Animator>();
+		m_Player = GameObject.FindGameObjectsWithTag("Player");
+		m_PlayerAnimator = new Animator[m_Player.Length];
+		for (int i = 0; i < m_Player.Length; i++)
+		{
+			m_PlayerAnimator[i] = m_Player[i].GetComponent<Animator>();
+		}
 	}
-		
+
 	void Update ()
-	{	
-		if(ShouldShootPlayer())
+	{
+		// ホスト以外は処理をしない
+		if (!MonobitEngine.MonobitNetwork.isHost)
+		{
+			return;
+		}
+
+		if (ShouldShootPlayer())
 		{			
 			m_Animator.SetBool("Shoot", true); // tell animator to shoot
 			
@@ -42,8 +76,9 @@ public class NPC_ShootPlayer : MonoBehaviour {
 			if(BulletSpawnPoint && !m_HasShootInCycle)
 			{								
 				if( m_Animator.GetFloat("Throw") > 0.99f )  // additionnal curve in the shoot animation
-				{					
-					SpawnBullet();							
+				{
+					//SpawnBullet();                           
+					m_MonobitView.RPC("SpawnBullet", MonobitEngine.MonobitTargets.All, selectedPos);
 				}
 			}					
 		}
@@ -52,25 +87,48 @@ public class NPC_ShootPlayer : MonoBehaviour {
 			m_Animator.SetBool("Shoot", false);
 		}
 	}
-	
-	
+
+
 	bool ShouldShootPlayer()
 	{
-		float distanceToPlayer = Vector3.Distance(m_Player.transform.position, transform.position);		
-		if(distanceToPlayer < m_AttackDistance)
+		// ルーム入室中のみ、プレイヤー情報の更新を行なう
+		if (MonobitEngine.MonobitNetwork.isConnect && MonobitEngine.MonobitNetwork.inRoom)
 		{
-			AnimatorStateInfo info = m_PlayerAnimator.GetCurrentAnimatorStateInfo(0);
-			// real bears don't shoot at dead player!
-			if( !info.IsName("Base Layer.Dying") && !info.IsName("Base Layer.Death") && !info.IsName("Base Layer.Reviving"))
+			if (m_Player.Length != MonobitEngine.MonobitNetwork.room.playerCount)
 			{
-				return true;
-			}			
+				// プレイヤー情報の再取得
+				m_Player = GameObject.FindGameObjectsWithTag("Player");
+				m_PlayerAnimator = new Animator[m_Player.Length];
+				for (int i = 0; i < m_Player.Length; i++)
+				{
+					m_PlayerAnimator[i] = m_Player[i].GetComponent<Animator>();
+				}
+			}
 		}
-		
-		return false;		
+
+		for (int i = 0; i < m_Player.Length; i++)
+		{
+			float distanceToPlayer = Vector3.Distance(m_Player[i].transform.position, transform.position);
+			if (distanceToPlayer < m_AttackDistance)
+			{
+				AnimatorStateInfo info = m_PlayerAnimator[i].GetCurrentAnimatorStateInfo(0);
+				// real bears don't shoot at dead player!
+				if (!info.IsName("Base Layer.Dying") && !info.IsName("Base Layer.Death") && !info.IsName("Base Layer.Reviving"))
+				{
+					if (selectedPlayer < 0)
+					{
+						selectedPlayer = i;
+						selectedPos = m_Player[i].transform.position;
+					}
+					return true;
+				}
+			}
+		}
+
+		return false;
 	}
-	
-	
+
+
 	// Makes sure we only shoot once per cycle
 	void ManageShootCycle()
 	{
@@ -82,41 +140,46 @@ public class NPC_ShootPlayer : MonoBehaviour {
 		
 		m_PrevStateTime = time;
 	}
-		
+
 	void OnAnimatorMove()
 	{
-		if(CheatRoot)
+		if (CheatRoot)
 		{
-			if(!enabled || !GetComponent<CharacterController>().enabled) return;
-			
+			if (!enabled || !GetComponent<CharacterController>().enabled) return;
+
 			//  Cheat the root to align to player target.
-			if(m_Animator.GetBool("Shoot"))
+			if (m_Animator.GetBool("Shoot"))
 			{
-				m_LookAtPosition.Set(m_Player.transform.position.x, transform.position.y, m_Player.transform.position.z); // Kill Y.
-				
-				transform.rotation = Quaternion.Lerp(transform.rotation, Quaternion.LookRotation(m_LookAtPosition-transform.position), Time.deltaTime * 5);
-				m_Animator.rootRotation =  transform.rotation;
-			}							
-		
-			GetComponent<CharacterController>().Move(m_Animator.deltaPosition);					
+				if (selectedPlayer >= 0)
+				{
+					m_LookAtPosition.Set(selectedPos.x, transform.position.y, selectedPos.z); // Kill Y.
+				}
+
+				transform.rotation = Quaternion.Lerp(transform.rotation, Quaternion.LookRotation(m_LookAtPosition - transform.position), Time.deltaTime * 5);
+				m_Animator.rootRotation = transform.rotation;
+			}
+
+			GetComponent<CharacterController>().Move(m_Animator.deltaPosition);
 			transform.rotation = m_Animator.rootRotation;
-		
-			ForceOnFloor();		
+
+			ForceOnFloor();
 		}
 	}
-	
+
 	// Spawns bullet
-	void SpawnBullet() 
+	[MunRPC]
+	void SpawnBullet(Vector3 targetPos)
 	{
-		GameObject newBullet = Instantiate(Bullet, BulletSpawnPoint.position , Quaternion.Euler(0, 0, 0)) as GameObject;		  										
-		Destroy(newBullet, m_BulletDuration);							
-		Vector3 direction = m_Player.transform.position - BulletSpawnPoint.position;
+		GameObject newBullet = Instantiate(Bullet, BulletSpawnPoint.position, Quaternion.Euler(0, 0, 0)) as GameObject;
+		Destroy(newBullet, m_BulletDuration);
+		Vector3 direction = targetPos - BulletSpawnPoint.position;
 		direction.y = 0;
-		newBullet.GetComponent<Rigidbody>().velocity = Vector3.Normalize(direction)* m_BulletSpeed;								
-		if(BulletParent)newBullet.transform.parent = BulletParent;
-		m_HasShootInCycle = true;				
+		newBullet.GetComponent<Rigidbody>().velocity = Vector3.Normalize(direction) * m_BulletSpeed;
+		if (BulletParent) newBullet.transform.parent = BulletParent;
+		m_HasShootInCycle = true;
+		selectedPlayer = -1;
 	}
-		
+
 	/// Make the NPC always on floor, even when colliding
 	void ForceOnFloor()
 	{		

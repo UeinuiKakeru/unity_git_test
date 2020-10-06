@@ -25,13 +25,22 @@ public class NPC_Patrol : MonoBehaviour {
 	// Use this for initialization
 	void Start () 
 	{
-		m_Animator = GetComponent<Animator>();		
+		transform.parent.parent = GameObject.Find("NPC_Spawner").transform.GetChild(0).transform;
+		gameObject.SetActive(true);
+
+		m_Animator = GetComponent<Animator>();
 	}
 	
     
 	void Update () 
 	{
-		if(WayPoints.Length > 0)
+		// ホスト以外は処理をしない
+		if (!MonobitEngine.MonobitNetwork.isHost)
+		{
+			return;
+		}
+
+		if (WayPoints.Length > 0)
 		{			
 			Transform target = WayPoints[m_WayPointIndex];
 			if (target)

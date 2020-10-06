@@ -11,6 +11,103 @@ public class NetworkControl : MonobitEngine.MonoBehaviour
     /** プレイヤーキャラクタ. */
     private GameObject playerObject = null;
 
+    /** ウィンドウ表示フラグ. */
+    private bool bDisplayWindow = false;
+
+    /** サーバ途中切断フラグ. */
+    private static bool bDisconnect = false;
+
+    /** サーバ接続失敗フラグ. */
+    private bool bConnectFailed = false;
+
+    /**
+     * 途中切断コールバック.
+     */
+    public void OnDisconnectedFromServer()
+    {
+        Debug.Log("OnDisconnectedFromServer");
+        if (bDisconnect == false)
+        {
+            bDisconnect = true;
+            bDisplayWindow = true;
+        }
+        else
+        {
+            bDisconnect = false;
+        }
+    }
+
+    /**
+     * サーバ接続失敗コールバック.
+     */
+    public void OnConnectToServerFailed(object parameters)
+    {
+        Debug.Log("OnConnectToServerFailed : StatusCode = " + parameters);
+        bConnectFailed = true;
+        bDisplayWindow = true;
+    }
+
+    /**
+     * ウィンドウ表示用メソッド.
+     */
+    void WindowControl(int windowId)
+    {
+        // GUIスタイル設定
+        GUIStyle style = new GUIStyle();
+        style.alignment = TextAnchor.MiddleCenter;
+        GUIStyleState stylestate = new GUIStyleState();
+        stylestate.textColor = Color.white;
+        style.normal = stylestate;
+
+        // 途中切断時の表示
+        if (bDisconnect)
+        {
+            GUILayout.Label("途中切断しました。\n再接続しますか？", style);
+            GUILayout.BeginHorizontal();
+            GUILayout.FlexibleSpace();
+            if (GUILayout.Button("はい", GUILayout.Width(50)))
+            {
+                // もう一度接続処理を実行する
+                MonobitNetwork.ConnectServer("Bearpocalypse_v1.0");
+                bDisconnect = false;
+                bDisplayWindow = false;
+            }
+            if (GUILayout.Button("いいえ", GUILayout.Width(50)))
+            {
+                // シーンをリロードし、初期化する
+                Application.LoadLevel(Application.loadedLevel);
+            }
+            GUILayout.FlexibleSpace();
+            GUILayout.EndHorizontal();
+            return;
+        }
+
+        // 接続失敗時の表示
+        if (bConnectFailed)
+        {
+            GUILayout.Label("接続に失敗しました。\n再接続しますか？", style);
+            GUILayout.BeginHorizontal();
+            GUILayout.FlexibleSpace();
+            if (GUILayout.Button("はい", GUILayout.Width(50)))
+            {
+                // もう一度接続処理を実行する
+                MonobitNetwork.ConnectServer("Bearpocalypse_v1.0");
+                bConnectFailed = false;
+                bDisplayWindow = false;
+            }
+            if (GUILayout.Button("いいえ", GUILayout.Width(50)))
+            {
+                // オフラインモードで起動する
+                MonobitNetwork.offline = true;
+                bConnectFailed = false;
+                bDisplayWindow = false;
+            }
+            GUILayout.FlexibleSpace();
+            GUILayout.EndHorizontal();
+            return;
+        }
+    }
+
     // Start is called before the first frame update
     void Start()
     {
@@ -42,6 +139,12 @@ public class NetworkControl : MonobitEngine.MonoBehaviour
     // OnGUI is called for rendering and handring GUI events
     void OnGUI()
     {
+        // サーバ接続状況に応じて、ウィンドウを表示する
+        if (bDisplayWindow)
+        {
+            GUILayout.Window(0, new Rect(Screen.width / 2 - 100, Screen.height / 2 - 40, 200, 80), WindowControl, "Caution");
+        }
+
         // デフォルトのボタンと被らないように、段下げを行う。
         GUILayout.Space(24);
 
@@ -51,6 +154,9 @@ public class NetworkControl : MonobitEngine.MonoBehaviour
             // ボタン入力でサーバから切断＆シーンリセット
             if(GUILayout.Button("Disconnect", GUILayout.Width(150)))
             {
+                // 正常動作のため、bDisconnect を true にして、GUIウィンドウ表示をキャンセルする
+                bDisconnect = true;
+
                 // サーバから切断する
                 MonobitNetwork.DisconnectServer();
 
