@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 394559642, guid: aa49a80689af50d47948c3793b5e6082, type: 3}
   m_Name: MonobitServerSettings
   m_EditorClassIdentifier: 
-  HostType: 2
+  HostType: 1
   HostProtocol: 0
   AuthID: 59440011-bb37-4f6a-b2b5-558b1e847551-1773e9e0
   SelfServerAddress: 192.168.0.15
