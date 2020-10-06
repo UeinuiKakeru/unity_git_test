@@ -39,7 +39,6 @@ public class NetworkControl : MonobitEngine.MonoBehaviour
         }
     }
 
-
     // OnGUI is called for rendering and handring GUI events
     void OnGUI()
     {

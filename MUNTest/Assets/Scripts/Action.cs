@@ -9,8 +9,11 @@ using System.Collections;
 /// Enables Actions for the main character
 /// </summary>/
 /// 
-public class Action : MonoBehaviour {		
-	
+public class Action : MonoBehaviour {
+
+	// MonobitView コンポーネント
+	MonobitEngine.MonobitView m_MonobitView = null;
+
 	public bool Slide; 				// slide under obstacles
 	public bool Vault;				// vaults over obstacles
 	public bool DeactivateCollider; // deactivates collider when action enable
@@ -26,6 +29,25 @@ public class Action : MonoBehaviour {
 	private CharacterController m_Controller ;
 	Vector3 m_Target = new Vector3();
 
+	void Awake()
+	{
+		// すべての親オブジェクトに対して MonobitView コンポーネントを検索する
+		if (GetComponentInParent<MonobitEngine.MonobitView>() != null)
+		{
+			m_MonobitView = GetComponentInParent<MonobitEngine.MonobitView>();
+		}
+		// 親オブジェクトに存在しない場合、すべての子オブジェクトに対して MonobitView コンポーネントを検索する
+		else if (GetComponentInChildren<MonobitEngine.MonobitView>() != null)
+		{
+			m_MonobitView = GetComponentInChildren<MonobitEngine.MonobitView>();
+		}
+		// 親子オブジェクトに存在しない場合、自身のオブジェクトに対して MonobitView コンポーネントを検索して設定する
+		else
+		{
+			m_MonobitView = GetComponent<MonobitEngine.MonobitView>();
+		}
+	}
+
 	void Start () 
 	{
         m_Animator = GetComponent<Animator>();        
@@ -34,7 +56,13 @@ public class Action : MonoBehaviour {
     
 	void Update ()  
 	{
-		if(GetComponent<Recorder>().enabled && !GetComponent<Recorder>().isRecording) return;
+		// オブジェクト所有権を所持しなければ実行しない
+		if (!m_MonobitView.isMine)
+		{
+			return;
+		}
+
+		if (GetComponent<Recorder>().enabled && !GetComponent<Recorder>().isRecording) return;
 
 		if (m_Animator)
 		{														

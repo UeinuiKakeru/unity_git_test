@@ -24,7 +24,15 @@ public class Spawner : MonoBehaviour
 				RaycastHit hitInfo;
 				if(Physics.Raycast(position + new Vector3(0,1,0), Vector3.down,out hitInfo,10) && hitInfo.collider.tag == "Spawnable")
 				{
-					GameObject newNPC = Instantiate(ToSpawn, position ,  Quaternion.Euler(0, Random.value*180, 0)) as GameObject;	
+					GameObject newNPC = MonobitEngine.MonobitNetwork.Instantiate(
+						ToSpawn.name,
+						position,
+						Quaternion.Euler(0, Random.value * 180, 0),
+						0,
+						null,
+						true,
+						false,
+						true) as GameObject; 
 					newNPC.transform.parent = transform.GetChild(0).transform;									
 					newNPC.SetActive(true);
 					m_CurrentSpawnCount++;

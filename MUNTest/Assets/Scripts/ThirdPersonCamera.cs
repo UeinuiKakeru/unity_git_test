@@ -15,11 +15,18 @@ public class ThirdPersonCamera : MonoBehaviour
 	Transform follow;
 	
 	void Start(){
-		follow = GameObject.FindWithTag ("Player").transform;	
+		//follow = GameObject.FindWithTag ("Player").transform;	
 	}
 	
 	void LateUpdate ()
 	{
+		if (follow == null)
+        {
+			GameObject go = GameObject.FindWithTag("Player");
+			if (go == null) return;
+			follow = go.transform;
+        }
+
 		// setting the target position to be the correct offset from the 
 		m_TargetPosition = follow.position + Vector3.up * distanceUp - follow.forward * distanceAway;
 		

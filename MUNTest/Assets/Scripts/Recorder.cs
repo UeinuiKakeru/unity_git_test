@@ -6,7 +6,10 @@ using System.Collections;
 /// Should work we any animator, be sure to register your states in the dictionnary in InitStateDictionnary()
 /// </summary>
 public class Recorder : MonoBehaviour {
-	
+
+	// MonobitView コンポーネント
+	MonobitEngine.MonobitView m_MonobitView = null;
+
 	Animator m_Animator;
 	
 	public Texture Play;
@@ -22,7 +25,26 @@ public class Recorder : MonoBehaviour {
 	const float buttonBorderWidth = 4;	
 	System.Collections.Generic.Dictionary<int,string> m_StateDictionnary = new System.Collections.Generic.Dictionary<int,string>();
 	System.Collections.Generic.List<int> samples = new System.Collections.Generic.List<int>();
-	
+
+	void Awake()
+	{
+		// すべての親オブジェクトに対して MonobitView コンポーネントを検索する
+		if (GetComponentInParent<MonobitEngine.MonobitView>() != null)
+		{
+			m_MonobitView = GetComponentInParent<MonobitEngine.MonobitView>();
+		}
+		// 親オブジェクトに存在しない場合、すべての子オブジェクトに対して MonobitView コンポーネントを検索する
+		else if (GetComponentInChildren<MonobitEngine.MonobitView>() != null)
+		{
+			m_MonobitView = GetComponentInChildren<MonobitEngine.MonobitView>();
+		}
+		// 親子オブジェクトに存在しない場合、自身のオブジェクトに対して MonobitView コンポーネントを検索して設定する
+		else
+		{
+			m_MonobitView = GetComponent<MonobitEngine.MonobitView>();
+		}
+	}
+
 	void Start () 
 	{
 		m_Animator = GetComponent<Animator>();			
@@ -31,8 +53,11 @@ public class Recorder : MonoBehaviour {
 	}
 	
 	void OnGUI() 
-	{		
-		if(isRecording)
+	{
+		// このUIは必要ないので実行しない
+		return;
+
+		if (isRecording)
 		{
 	        if (GUILayout.Button(Pause))
 			{
@@ -104,7 +129,13 @@ public class Recorder : MonoBehaviour {
 	
 	void Update()
 	{
-		if(isRecording)
+		// オブジェクト所有権を所持しなければ実行しない
+		if (!m_MonobitView.isMine)
+		{
+			return;
+		}
+
+		if (isRecording)
 		{				
 			if(samples.Count == (FrameCount-1)) // has looped, removed 1st sample
 			{							

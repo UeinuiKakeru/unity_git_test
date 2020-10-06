@@ -6,7 +6,10 @@ using System.Collections;
 /// </summary>
 /// 
 public class Player_Shoot : MonoBehaviour {
-	
+
+	// MonobitView コンポーネント
+	MonobitEngine.MonobitView m_MonobitView = null;
+
 	public GameObject Bullet;
 	public Transform BulletSpawnPoint;
 	public Transform BulletParent;
@@ -15,8 +18,27 @@ public class Player_Shoot : MonoBehaviour {
 	const float m_BulletDuration = 2.0f;
 	float m_Timer = 0;
 	
-	Animator m_Animator;	
-	
+	Animator m_Animator;
+
+	void Awake()
+	{
+		// すべての親オブジェクトに対して MonobitView コンポーネントを検索する
+		if (GetComponentInParent<MonobitEngine.MonobitView>() != null)
+		{
+			m_MonobitView = GetComponentInParent<MonobitEngine.MonobitView>();
+		}
+		// 親オブジェクトに存在しない場合、すべての子オブジェクトに対して MonobitView コンポーネントを検索する
+		else if (GetComponentInChildren<MonobitEngine.MonobitView>() != null)
+		{
+			m_MonobitView = GetComponentInChildren<MonobitEngine.MonobitView>();
+		}
+		// 親子オブジェクトに存在しない場合、自身のオブジェクトに対して MonobitView コンポーネントを検索して設定する
+		else
+		{
+			m_MonobitView = GetComponent<MonobitEngine.MonobitView>();
+		}
+	}
+
 	void Start () 
 	{
 		m_Animator = GetComponent<Animator>();	
@@ -24,7 +46,13 @@ public class Player_Shoot : MonoBehaviour {
 	
 	// Update is called once per frame
 	void Update () 
-	{		
+	{
+		// オブジェクト所有権を所持しなければ実行しない
+		if (!m_MonobitView.isMine)
+		{
+			return;
+		}
+
 		bool shoot = Input.GetButton("Fire1");
 		m_Animator.SetBool("Shoot",shoot);
 
