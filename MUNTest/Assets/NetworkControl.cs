@@ -75,7 +75,16 @@ public class NetworkControl : MonobitEngine.MonoBehaviour
             if (GUILayout.Button("いいえ", GUILayout.Width(50)))
             {
                 // シーンをリロードし、初期化する
-                Application.LoadLevel(Application.loadedLevel);
+#if UNITY_5_3_OR_NEWER || UNITY_5_3
+                string sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+                UnityEngine.SceneManagement.SceneManager.LoadScene(sceneName);
+#else
+                Application.LoadLevel(Application.loadedLevelName);
+#endif
+                // オフラインモードで起動する
+                MonobitNetwork.offline = true;
+                bConnectFailed = false;
+                bDisplayWindow = false;
             }
             GUILayout.FlexibleSpace();
             GUILayout.EndHorizontal();
